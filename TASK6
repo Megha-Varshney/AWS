@@ -1,0 +1,64 @@
+-----------------------------------------------------------------------pod.tf-------------------------------------------------------------------------------------------
+
+provider "kubernetes" {
+  config_context_cluster   = "minikube"
+}
+
+resource "kubernetes_pod" "wp_pod" {
+  metadata {
+    name = "wppod"
+    labels = {
+       app = "wordpress"
+    }
+  }
+ 
+  spec {
+    container {
+       image = "wordpress"
+       name  = "wppod"
+     }
+  }
+ }
+
+
+resource "kubernetes_service" "wp_lb" {
+  metadata {
+    name = "wplb"
+  }
+  spec {
+    selector = {
+      app = "${kubernetes_pod.wp_pod.metadata.0.labels.app}"
+    }
+    port {
+      node_port   = 32123
+      port        = 80
+      target_port = 80
+    }
+    type = "NodePort"
+}
+}
+
+
+-------------------------------------------------------------------------db.tf-------------------------------------------------------------------------------------------
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_db_instance" "db" {
+ 
+  engine            = "mysql"
+  engine_version    = "5.7.30"
+  instance_class    = "db.t2.micro"
+  allocated_storage = 5
+  name     = "mydb"
+  username = "wordpress_user"
+  password = "rootroot"
+  port     = "3306"
+  publicly_accessible = true
+  iam_database_authentication_enabled = true
+  vpc_security_group_ids = ["sg-f3492997"]
+  tags = {
+     Name = "mysql"
+ }
+}
